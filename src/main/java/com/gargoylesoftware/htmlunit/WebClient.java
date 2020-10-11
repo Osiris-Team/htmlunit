@@ -57,6 +57,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import com.gargoylesoftware.htmlunit.javascript.enhanced.EnhancedJavaScriptEngine;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -219,6 +220,7 @@ public class WebClient implements Serializable, AutoCloseable {
 
     private WebClientOptions options_ = new WebClientOptions();
     private final boolean javaScriptEngineEnabled_;
+    private final boolean enhancedJavaScriptEngineEnabled_;
     private WebClientInternals internals_ = new WebClientInternals();
     private final StorageHolder storageHolder_ = new StorageHolder();
 
@@ -248,22 +250,25 @@ public class WebClient implements Serializable, AutoCloseable {
      * @param proxyPort the port to use on the proxy server
      */
     public WebClient(final BrowserVersion browserVersion, final String proxyHost, final int proxyPort) {
-        this(browserVersion, true, proxyHost, proxyPort);
+        this(browserVersion, true, false, proxyHost, proxyPort);
     }
 
     /**
      * Creates an instance that will use the specified {@link BrowserVersion} and proxy server.
      * @param browserVersion the browser version to simulate
      * @param javaScriptEngineEnabled set to false if the simulated browser should not support javaScript
+     * @param enhancedJavaScriptEngineEnabled set to true, to use the new javascript engine (disabled by default)
      * @param proxyHost the server that will act as proxy or null for no proxy
      * @param proxyPort the port to use on the proxy server
      */
     public WebClient(final BrowserVersion browserVersion, final boolean javaScriptEngineEnabled,
-            final String proxyHost, final int proxyPort) {
+                     final boolean enhancedJavaScriptEngineEnabled,
+                     final String proxyHost, final int proxyPort) {
         WebAssert.notNull("browserVersion", browserVersion);
 
         browserVersion_ = browserVersion;
         javaScriptEngineEnabled_ = javaScriptEngineEnabled;
+        enhancedJavaScriptEngineEnabled_ = enhancedJavaScriptEngineEnabled;
 
         if (proxyHost == null) {
             getOptions().setProxyConfig(new ProxyConfig());
@@ -273,8 +278,15 @@ public class WebClient implements Serializable, AutoCloseable {
         }
 
         webConnection_ = new HttpWebConnection(this); // this has to be done after the browser version was set
+
+        // Select between old engine (rhino) and new enhanced engine (graaljs)
         if (javaScriptEngineEnabled_) {
-            scriptEngine_ = new JavaScriptEngine(this);
+            if (enhancedJavaScriptEngineEnabled){
+                scriptEngine_ = new EnhancedJavaScriptEngine(this);
+            }
+            else{
+                scriptEngine_ = new JavaScriptEngine(this);
+            }
         }
         loadQueue_ = new ArrayList<>();
 
@@ -2260,7 +2272,17 @@ public class WebClient implements Serializable, AutoCloseable {
         in.defaultReadObject();
 
         webConnection_ = new HttpWebConnection(this);
-        scriptEngine_ = new JavaScriptEngine(this);
+
+        // Select between old engine (rhino) and new enhanced engine (graaljs)
+        if (javaScriptEngineEnabled_) {
+            if (enhancedJavaScriptEngineEnabled_){
+                scriptEngine_ = new EnhancedJavaScriptEngine(this);
+            }
+            else{
+                scriptEngine_ = new JavaScriptEngine(this);
+            }
+        }
+
         jobManagers_ = Collections.synchronizedList(new ArrayList<WeakReference<JavaScriptJobManager>>());
         loadQueue_ = new ArrayList<>();
 
@@ -2599,5 +2621,15 @@ public class WebClient implements Serializable, AutoCloseable {
      */
     public boolean isJavaScriptEngineEnabled() {
         return javaScriptEngineEnabled_;
+    }
+
+    /**
+     * Returns true if the enhanced javaScript engine is enabled.
+     * To disable the javascript engine you have to use the
+     * {@link WebClient#WebClient(BrowserVersion, boolean, String, int)} constructor.
+     * @return true if the enhanced javaScript engine is enabled.
+     */
+    public boolean isEnhancedJavaScriptEngineEnabled(){
+        return enhancedJavaScriptEngineEnabled_;
     }
 }

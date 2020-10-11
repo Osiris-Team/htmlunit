@@ -32,6 +32,8 @@ import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.javascript.regexp.HtmlUnitRegExpProxy;
 
+import de.undercouch.citeproc.script.ScriptRunner;
+import de.undercouch.citeproc.script.ScriptRunnerFactory;
 import net.sourceforge.htmlunit.corejs.javascript.Callable;
 import net.sourceforge.htmlunit.corejs.javascript.ClassShutter;
 import net.sourceforge.htmlunit.corejs.javascript.Context;
@@ -161,6 +163,8 @@ public class HtmlUnitContextFactory extends ContextFactory {
             }
         }
 
+
+
         @Override
         protected Script compileString(String source, final Evaluator compiler,
                 final ErrorReporter compilationErrorReporter, final String sourceName,
@@ -221,9 +225,12 @@ public class HtmlUnitContextFactory extends ContextFactory {
                 .getThreadLocal(JavaScriptEngine.KEY_STARTING_PAGE);
             source = preProcess(page, source, sourceName, lineno, null);
 
+
             return super.compileString(source, compiler, compilationErrorReporter,
                     sourceName, lineno, securityDomain);
         }
+
+
 
         @Override
         protected Function compileFunction(final Scriptable scope, String source,
@@ -273,7 +280,12 @@ public class HtmlUnitContextFactory extends ContextFactory {
      */
     @Override
     protected Context makeContext() {
-        final TimeoutContext cx = new TimeoutContext(this);
+
+        final TimeoutContext cx;
+        if (isEnhancedEngineEnabled_){
+            cx = new EnhancedTimeoutContext(this);
+        } else { cx = new TimeoutContext(this);}
+
         cx.setLanguageVersion(Context.VERSION_ES6);
 
         // make sure no java classes are usable from js

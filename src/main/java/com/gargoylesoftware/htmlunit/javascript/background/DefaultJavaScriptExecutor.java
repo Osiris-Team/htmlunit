@@ -102,7 +102,7 @@ public class DefaultJavaScriptExecutor implements JavaScriptExecutor {
 
     /**
      * Returns the JobExecutor corresponding to the earliest job.
-     * @return the JobExectuor with the earliest job.
+     * @return the JobExecutor with the earliest job.
      */
     protected JavaScriptJobManager getJobManagerWithEarliestJob() {
         JavaScriptJobManager javaScriptJobManager = null;
